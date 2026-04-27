@@ -115,3 +115,6 @@ def prepare_chart_trend(df, selected_date):
     df_trend = df[(df['Fecha'] >= fecha_inicio) & (df['Fecha'] <= selected_date)]
     trend_daily = df_trend.groupby('Fecha')[['Ingreso Real', 'Presupuesto', 'Ingreso Año Anterior']].sum().reset_index()
     return trend_daily
+
+
+
