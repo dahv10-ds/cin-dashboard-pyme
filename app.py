@@ -23,26 +23,31 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DEL TACÓMETRO MEJORADA (Sin solapamiento) ---
+# --- FUNCIÓN DEL TACÓMETRO MEJORADA (Línea delgada y colores vivos) ---
 def create_gauge_chart(value, title, is_percent_growth=False):
-    # Si es crecimiento, el valor base de referencia es 0% (no 100%)
     display_value = value * 100
     reference_val = 0 if is_percent_growth else 100
+    
+    # Ajustamos el rango del eje para que sea más proporcionado
+    min_range = -30 if is_percent_growth else 0
+    max_range = max(50, display_value + 10) if is_percent_growth else max(120, display_value + 10)
     
     fig = go.Figure(go.Indicator(
         mode = "gauge+number+delta",
         value = display_value,
-        domain = {'x': [0, 1], 'y': [0, 0.75]}, # Bajamos el gráfico para dejar espacio al título
+        domain = {'x': [0, 1], 'y': [0, 0.75]},
         delta = {'reference': reference_val, 'position': "top", 'suffix': "%", 'font': {'size': 16}},
         number = {'suffix': "%", 'font': {'size': 22, 'color': '#ffffff'}},
         gauge = {
-            'axis': {'range': [-50 if is_percent_growth else 0, 150 if is_percent_growth else 130], 'tickcolor': "#334155"},
-            'bar': {'color': "#3b82f6"},
+            'axis': {'range': [min_range, max_range], 'tickcolor': "#334155"},
+            # Aquí hacemos la línea azul delgada (15% del grosor total)
+            'bar': {'color': "#3b82f6", 'thickness': 0.15},
             'bgcolor': "rgba(0,0,0,0)",
             'steps': [
-                {'range': [-50 if is_percent_growth else 0, 0 if is_percent_growth else 80], 'color': "rgba(239, 68, 68, 0.2)"},
-                {'range': [0 if is_percent_growth else 80, 10 if is_percent_growth else 100], 'color': "rgba(245, 158, 11, 0.2)"},
-                {'range': [10 if is_percent_growth else 100, 150 if is_percent_growth else 130], 'color': "rgba(16, 185, 129, 0.2)"}
+                # Subimos la opacidad a 0.7 para que los colores sean vivos y premium
+                {'range': [min_range, 0 if is_percent_growth else 80], 'color': "rgba(239, 68, 68, 0.7)"},   # Rojo
+                {'range': [0 if is_percent_growth else 80, 10 if is_percent_growth else 100], 'color': "rgba(245, 158, 11, 0.7)"}, # Amarillo
+                {'range': [10 if is_percent_growth else 100, max_range], 'color': "rgba(16, 185, 129, 0.7)"} # Verde
             ],
             'threshold': {'line': {'color': "white", 'width': 2}, 'value': reference_val}
         }
