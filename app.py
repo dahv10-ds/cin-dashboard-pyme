@@ -6,7 +6,7 @@ from src.calculations import load_and_preprocess, get_pulse_metrics, prepare_adv
 
 st.set_page_config(page_title="Control Estratégico Integral", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS Avanzado UI/UX (Tarjetas Corporativas)
+# CSS Avanzado UI/UX (Tarjetas Corporativas y Optimización Móvil)
 st.markdown("""
     <style>
     .stApp { background-color: #0b1120; }
@@ -17,16 +17,56 @@ st.markdown("""
         background-color: #1e293b;
         border: 1px solid #334155;
         border-radius: 10px;
-        padding: 20px 10px;
+        padding: 15px 10px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
     }
     
-    div[data-testid="stMetricValue"] { text-align: center !important; font-size: 2.2rem !important; color: #ffffff !important; }
-    div[data-testid="stMetricLabel"] { text-align: center !important; font-size: 1.1rem !important; color: #94a3b8 !important; }
-    div[data-testid="stMetricDelta"] { justify-content: center !important; }
-    button[data-baseweb="tab"] { font-size: 1.2rem !important; padding: 1rem 2rem !important; }
+    div[data-testid="stMetricValue"] { text-align: center !important; font-size: 1.8rem !important; color: #ffffff !important; }
+    div[data-testid="stMetricLabel"] { text-align: center !important; font-size: 1rem !important; color: #94a3b8 !important; }
+    div[data-testid="stMetricDelta"] { justify-content: center !important; font-size: 0.9rem !important;}
+    
+    /* Pestañas optimizadas para toque en móvil */
+    button[data-baseweb="tab"] { font-size: 1.1rem !important; padding: 0.8rem 1.5rem !important; }
     </style>
 """, unsafe_allow_html=True)
+
+# --- FUNCIÓN DEL TACÓMETRO ---
+def create_gauge_chart(value, title):
+    pct_value = value * 100 
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number+delta",
+        value = pct_value,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': title, 'font': {'size': 14, 'color': '#94a3b8'}},
+        delta = {'reference': 100, 'position': "top", 'suffix': "%"},
+        number = {'suffix': "%", 'font': {'size': 24, 'color': '#ffffff'}},
+        gauge = {
+            'axis': {'range': [0, max(120, pct_value + 10)], 'tickwidth': 1, 'tickcolor': "#334155"},
+            'bar': {'color': "#3b82f6"},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 2,
+            'bordercolor': "#1e293b",
+            'steps': [
+                {'range': [0, 80], 'color': "rgba(239, 68, 68, 0.3)"},   # Rojo
+                {'range': [80, 100], 'color': "rgba(245, 158, 11, 0.3)"}, # Amarillo
+                {'range': [100, max(120, pct_value + 10)], 'color': "rgba(16, 185, 129, 0.3)"} # Verde
+            ],
+            'threshold': {
+                'line': {'color': "white", 'width': 3},
+                'thickness': 0.75,
+                'value': 100
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        font={'color': "#f8fafc", 'family': "Arial"},
+        height=180, # Altura compacta para móviles
+        margin=dict(l=10, r=10, t=30, b=10)
+    )
+    return fig
+# -----------------------------
 
 @st.cache_data
 def get_data():
@@ -35,9 +75,10 @@ def get_data():
 df_base = get_data()
 
 st.title("Control Integral de Negocios (CIN)")
-st.markdown("<p style='color: #64748b; font-size: 1.2rem; margin-top:-15px;'>Visibilidad Estratégica en Tiempo Real</p><br>", unsafe_allow_html=True)
+st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top:-15px;'>Visibilidad Estratégica en Tiempo Real</p><br>", unsafe_allow_html=True)
 
-col_espacio1, col_sel1, col_sel2, col_espacio2 = st.columns([1, 2, 2, 1])
+# Eliminamos las columnas espaciadoras para maximizar el ancho en móviles
+col_sel1, col_sel2 = st.columns(2)
 with col_sel1:
     ultima_fecha = df_base['Fecha'].max()
     fecha_analisis = pd.to_datetime(st.date_input("🗓️ Fecha de análisis:", ultima_fecha, min_value=df_base['Fecha'].min(), max_value=ultima_fecha))
@@ -59,9 +100,10 @@ if metrics:
         c1, c2, c3 = st.columns(3)
         c1.metric("Acumulado a la Fecha", f"${metrics['ingreso_mtd']:,.0f}")
         c2.metric("Presupuesto a la Fecha", f"${metrics['ppto_mtd']:,.0f}")
-        c3.metric("Cumplimiento Actual", f"{metrics['cumplimiento_mtd']:.1%}", f"${metrics['ingreso_mtd'] - metrics['ppto_mtd']:,.0f} vs Ppto", delta_color="normal" if (metrics['ingreso_mtd'] - metrics['ppto_mtd']) >= 0 else "inverse")
+        with c3:
+            st.plotly_chart(create_gauge_chart(metrics['cumplimiento_mtd'], "Cumplimiento MTD"), use_container_width=True, config={'displayModeBar': False})
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         st.subheader("Proyección a Cierre de Mes (Run-Rate)")
         st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Si mantenemos el ritmo, ¿alcanzaremos la meta del mes?</p>", unsafe_allow_html=True)
@@ -69,18 +111,16 @@ if metrics:
         c4, c5, c6 = st.columns(3)
         c4.metric("Proyección Final MTD", f"${metrics['proyeccion_mes']:,.0f}")
         c5.metric("Presupuesto Total del Mes", f"${metrics['ppto_total_mes']:,.0f}")
-        c6.metric("Cumplimiento Proyectado", f"{metrics['cumplimiento_proyectado']:.1%}", f"${metrics['proyeccion_mes'] - metrics['ppto_total_mes']:,.0f} vs Meta Final", delta_color="normal" if (metrics['proyeccion_mes'] - metrics['ppto_total_mes']) >= 0 else "inverse")
+        with c6:
+            st.plotly_chart(create_gauge_chart(metrics['cumplimiento_proyectado'], "Proyección Final"), use_container_width=True, config={'displayModeBar': False})
 
     with tab2:
         st.subheader(f"Tendencia de Facturación (Últimos 7 Días)")
         df_trend = prepare_chart_trend(df_working, fecha_analisis)
         if not df_trend.empty:
             fig = go.Figure()
-            # Barra Real
             fig.add_trace(go.Bar(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Ingreso Real'], name='Venta Real', marker_color='#3b82f6', text=df_trend['Ingreso Real'].map('${:,.0f}'.format), textposition='auto'))
-            # Línea Presupuesto
             fig.add_trace(go.Scatter(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Presupuesto'], mode='lines+markers', name='Presupuesto', line=dict(color='#10b981', width=3)))
-            # Línea Año Anterior
             fig.add_trace(go.Scatter(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Ingreso Año Anterior'], mode='lines+markers', name='Año Anterior', line=dict(color='#f59e0b', width=3, dash='dot')))
             
             fig.update_layout(template='plotly_dark', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
@@ -92,45 +132,35 @@ if metrics:
         
         def style_dataframe(df):
             format_dict = {col: '${:,.2f}' if col[0] == 'Facturación' else '{:.0%}' for col in df.columns if col[0] in ['Facturación', 'Cumplimiento', 'Crecimiento']}
-            
-            # Formateamos y ocultamos el índice
             st_df = df.style.hide(axis='index').format(format_dict)
             
             def highlight_rows(x):
                 df_colors = pd.DataFrame('', index=x.index, columns=x.columns)
                 if len(df_colors) > 1: 
-                    # Fila T-7
                     df_colors.iloc[1, :] = 'background-color: #1e3a8a; color: white;'
-                    # Fila TOTAL al final
                     df_colors.iloc[-1, :] = 'background-color: #334155; color: white; font-weight: bold;'
                 return df_colors
 
             st_df = st_df.apply(highlight_rows, axis=None)
-            
-            # Alineación centrada para celdas y encabezados
             st_df = st_df.set_table_styles([
                 {'selector': 'th', 'props': [('text-align', 'center !important'), ('border-bottom', '1px solid #334155')]},
                 {'selector': 'td', 'props': [('text-align', 'center !important'), ('border-bottom', '1px solid #1e293b')]}
             ])
             return st_df
             
-        # 1. Generamos el HTML puro directamente desde Pandas
         html_table = style_dataframe(df_table).to_html()
         
-        # 2. Inyectamos CSS para que ocupe el 100% del contenedor y combine con el tema oscuro
         custom_html = f"""
         <div style="width:100%; overflow-x: auto;">
             <style>
-                table.dataframe {{ width: 100%; border-collapse: collapse; color: #f8fafc; font-size: 14px; }}
-                table.dataframe th {{ background-color: #0f172a; padding: 10px; font-weight: 600; }}
-                table.dataframe td {{ padding: 8px; }}
+                table.dataframe {{ width: 100%; border-collapse: collapse; color: #f8fafc; font-size: 13px; }}
+                table.dataframe th {{ background-color: #0f172a; padding: 10px; font-weight: 600; white-space: nowrap; }}
+                table.dataframe td {{ padding: 8px; white-space: nowrap; }}
                 table.dataframe tr:hover {{ background-color: #1e293b; }}
             </style>
             {html_table}
         </div>
         """
-        
-        # 3. Renderizamos usando st.markdown
         st.markdown(custom_html, unsafe_allow_html=True)
 else:
     st.warning("No hay datos disponibles para esta fecha.")
