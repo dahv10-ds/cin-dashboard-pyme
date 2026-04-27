@@ -1,0 +1,24 @@
+# --- Entornos Virtuales ---
+venv/
+env/
+.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Datos (Seguridad y Tamaño) ---
+# Ignoramos la carpeta data para no subir Excel/CSV pesados o privados
+data/raw/*.xlsx
+data/raw/*.csv
+data/processed/
+
+# --- IDEs ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- Streamlit ---
+.streamlit/
