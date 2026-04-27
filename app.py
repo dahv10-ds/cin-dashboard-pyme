@@ -23,41 +23,76 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DEL TACÓMETRO MEJORADA (Línea delgada y colores vivos) ---
+# --- FUNCIÓN DEL TACÓMETRO ESTÁNDAR 0-100 ---
 def create_gauge_chart(value, title, is_percent_growth=False):
     display_value = value * 100
-    reference_val = 0 if is_percent_growth else 100
     
-    # Ajustamos el rango del eje para que sea más proporcionado
-    min_range = -30 if is_percent_growth else 0
-    max_range = max(50, display_value + 10) if is_percent_growth else max(120, display_value + 10)
-    
-    fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
-        value = display_value,
-        domain = {'x': [0, 1], 'y': [0, 0.75]},
-        delta = {'reference': reference_val, 'position': "top", 'suffix': "%", 'font': {'size': 16}},
-        number = {'suffix': "%", 'font': {'size': 22, 'color': '#ffffff'}},
+    fig = go.Figure()
+
+    # 1. El Tacómetro (Escala fija 0-100)
+    fig.add_trace(go.Indicator(
+        mode = "gauge",
+        # Visualmente limitamos la aguja al rango 0-100
+        value = max(0, min(display_value, 100)), 
+        domain = {'x': [0, 1], 'y': [0.35, 1]},
         gauge = {
-            'axis': {'range': [min_range, max_range], 'tickcolor': "#334155"},
-            # Aquí hacemos la línea azul delgada (15% del grosor total)
-            'bar': {'color': "#3b82f6", 'thickness': 0.15},
-            'bgcolor': "rgba(0,0,0,0)",
+            'axis': {
+                'range': [0, 100], 
+                'tickwidth': 1, 
+                'tickcolor': "#94a3b8",
+                'tickmode': 'array',
+                'tickvals': [0, 50, 100],
+                'tickfont': {'size': 12, 'color': "#94a3b8"}
+            },
+            'bar': {'color': "#ffffff", 'thickness': 0.12}, # Aguja blanca ultra-delgada y elegante
+            'bgcolor': "rgba(255,255,255,0.05)",
             'steps': [
-                # Subimos la opacidad a 0.7 para que los colores sean vivos y premium
-                {'range': [min_range, 0 if is_percent_growth else 80], 'color': "rgba(239, 68, 68, 0.7)"},   # Rojo
-                {'range': [0 if is_percent_growth else 80, 10 if is_percent_growth else 100], 'color': "rgba(245, 158, 11, 0.7)"}, # Amarillo
-                {'range': [10 if is_percent_growth else 100, max_range], 'color': "rgba(16, 185, 129, 0.7)"} # Verde
+                {'range': [0, 70], 'color': "#dc2626"},   # Rojo Corporativo
+                {'range': [70, 90], 'color': "#f59e0b"}, # Ámbar/Amarillo Precaución
+                {'range': [90, 100], 'color': "#16a34a"} # Verde Éxito
             ],
-            'threshold': {'line': {'color': "white", 'width': 2}, 'value': reference_val}
+            'threshold': {
+                'line': {'color': "#ffffff", 'width': 3},
+                'thickness': 0.8,
+                'value': 100 if not is_percent_growth else 0
+            }
         }
     ))
+
+    # 2. Número Central (Ubicado debajo del arco para máxima visibilidad)
+    fig.add_annotation(
+        text=f"{display_value:.1f}%",
+        x=0.5, y=0.15,
+        showarrow=False,
+        font=dict(size=34, color="#ffffff", family="Arial Black"),
+        xref="paper", yref="paper"
+    )
     
+    # 3. Etiqueta de Comparativa (Delta)
+    ref = 100 if not is_percent_growth else 0
+    diff = display_value - ref
+    color = "#4ade80" if diff >= 0 else "#f87171"
+    sign = "+" if diff > 0 else ""
+    
+    fig.add_annotation(
+        text=f"{sign}{diff:.1f}% vs objetivo",
+        x=0.5, y=0.42,
+        showarrow=False,
+        font=dict(size=13, color=color, family="Arial"),
+        xref="paper", yref="paper"
+    )
+
     fig.update_layout(
-        title = {'text': title, 'y': 0.9, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top', 'font': {'size': 14, 'color': '#94a3b8'}},
+        title = {
+            'text': title.upper(), 
+            'y': 0.98, 'x': 0.5, 
+            'xanchor': 'center', 
+            'font': {'size': 14, 'color': '#94a3b8', 'letter_spacing': 2}
+        },
         paper_bgcolor="rgba(0,0,0,0)",
-        height=200,
-        margin=dict(l=15, r=15, t=50, b=10)
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=240, # Aumentamos un poco el alto para dar aire al número inferior
+        margin=dict(l=25, r=25, t=50, b=10)
     )
     return fig
 
