@@ -87,11 +87,12 @@ def create_gauge_chart(value, title, is_percent_growth=False):
             'text': title.upper(), 
             'y': 0.98, 'x': 0.5, 
             'xanchor': 'center', 
-            'font': {'size': 14, 'color': '#94a3b8', 'letter_spacing': 2}
+            # Eliminamos el letter_spacing problemático
+            'font': {'size': 14, 'color': '#94a3b8'} 
         },
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        height=240, # Aumentamos un poco el alto para dar aire al número inferior
+        height=240, 
         margin=dict(l=25, r=25, t=50, b=10)
     )
     return fig
