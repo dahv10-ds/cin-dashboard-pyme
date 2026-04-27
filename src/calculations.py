@@ -88,7 +88,9 @@ def prepare_advanced_table(df, selected_date):
         
     resultado = resultado.reset_index()
     
-    # 6. Formato de Fechas y Textos
+    # 6. Formato de Fechas y Textos (Adaptado para la Nube)
+    dias_espanol = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves', 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
+    
     dias_semana = []
     fechas_str = []
     for val in resultado['Fecha']:
@@ -96,7 +98,8 @@ def prepare_advanced_table(df, selected_date):
             dias_semana.append('')
             fechas_str.append('TOTAL')
         else:
-            dias_semana.append(val.day_name(locale='es_ES').capitalize())
+            # Usamos weekday() que devuelve un número del 0 (Lunes) al 6 (Domingo)
+            dias_semana.append(dias_espanol[val.weekday()])
             fechas_str.append(val.strftime('%d/%m'))
             
     resultado.insert(0, ('Datos', 'Fecha'), fechas_str)
