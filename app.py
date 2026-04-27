@@ -24,15 +24,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- FUNCIÓN DEL TACÓMETRO ESTÁNDAR 0-100 ---
-def create_gauge_chart(value, title, is_percent_growth=False):
+def create_gauge_chart(value, title):
     display_value = value * 100
     
     fig = go.Figure()
 
-    # 1. El Tacómetro (Escala fija 0-100)
     fig.add_trace(go.Indicator(
         mode = "gauge",
-        # Visualmente limitamos la aguja al rango 0-100
         value = max(0, min(display_value, 100)), 
         domain = {'x': [0, 1], 'y': [0.35, 1]},
         gauge = {
@@ -44,22 +42,21 @@ def create_gauge_chart(value, title, is_percent_growth=False):
                 'tickvals': [0, 50, 100],
                 'tickfont': {'size': 12, 'color': "#94a3b8"}
             },
-            'bar': {'color': "#ffffff", 'thickness': 0.12}, # Aguja blanca ultra-delgada y elegante
+            'bar': {'color': "#ffffff", 'thickness': 0.12},
             'bgcolor': "rgba(255,255,255,0.05)",
             'steps': [
-                {'range': [0, 70], 'color': "#dc2626"},   # Rojo Corporativo
-                {'range': [70, 90], 'color': "#f59e0b"}, # Ámbar/Amarillo Precaución
-                {'range': [90, 100], 'color': "#16a34a"} # Verde Éxito
+                {'range': [0, 70], 'color': "#dc2626"},
+                {'range': [70, 90], 'color': "#f59e0b"},
+                {'range': [90, 100], 'color': "#16a34a"}
             ],
             'threshold': {
                 'line': {'color': "#ffffff", 'width': 3},
                 'thickness': 0.8,
-                'value': 100 if not is_percent_growth else 0
+                'value': 100
             }
         }
     ))
 
-    # 2. Número Central (Ubicado debajo del arco para máxima visibilidad)
     fig.add_annotation(
         text=f"{display_value:.1f}%",
         x=0.5, y=0.15,
@@ -68,14 +65,12 @@ def create_gauge_chart(value, title, is_percent_growth=False):
         xref="paper", yref="paper"
     )
     
-    # 3. Etiqueta de Comparativa (Delta)
-    ref = 100 if not is_percent_growth else 0
-    diff = display_value - ref
+    diff = display_value - 100
     color = "#4ade80" if diff >= 0 else "#f87171"
     sign = "+" if diff > 0 else ""
     
     fig.add_annotation(
-        text=f"{sign}{diff:.1f}% vs objetivo",
+        text=f"{sign}{diff:.1f}% vs base",
         x=0.5, y=0.42,
         showarrow=False,
         font=dict(size=13, color=color, family="Arial"),
@@ -87,12 +82,11 @@ def create_gauge_chart(value, title, is_percent_growth=False):
             'text': title.upper(), 
             'y': 0.98, 'x': 0.5, 
             'xanchor': 'center', 
-            # Eliminamos el letter_spacing problemático
-            'font': {'size': 14, 'color': '#94a3b8'} 
+            'font': {'size': 14, 'color': '#94a3b8'}
         },
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        height=240, 
+        height=240,
         margin=dict(l=25, r=25, t=50, b=10)
     )
     return fig
@@ -137,8 +131,8 @@ if metrics:
         g1.metric("Venta Actual", f"${metrics['ingreso_mtd']:,.0f}")
         g2.metric("Venta Año Pasado", f"${metrics['ingreso_yoy_mtd']:,.0f}")
         with g3:
-            # Usamos lógica de crecimiento (referencia 0%)
-            st.plotly_chart(create_gauge_chart(metrics['crecimiento_mtd'], "Crecimiento Real", is_percent_growth=True), use_container_width=True, config={'displayModeBar': False})
+            # Aquí sumamos 1 (que representa el 100% de la base) a tu lógica original
+            st.plotly_chart(create_gauge_chart(metrics['crecimiento_mtd'] + 1, "Rendimiento YoY"), use_container_width=True, config={'displayModeBar': False})
 
         st.markdown("---")
         
