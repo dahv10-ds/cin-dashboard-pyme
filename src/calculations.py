@@ -9,24 +9,23 @@ def load_and_preprocess(filepath):
     return df
 
 def get_pulse_metrics(df, selected_date):
-    """Calcula KPIs principales, MTD y Proyección a fin de mes (Run-Rate)."""
+    """Calcula KPIs principales, MTD, Proyección y Crecimiento YoY."""
     df_upto = df[df['Fecha'] <= selected_date]
-    daily = df_upto.groupby('Fecha')[['Ingreso Real', 'Presupuesto', 'Ingreso Año Anterior']].sum()
-
-    if selected_date not in daily.index:
-        return None
-
+    
     # --- MÉTRICAS DEL MES (MTD) ---
     inicio_mes = selected_date.replace(day=1)
     mtd_data = df_upto[(df_upto['Fecha'] >= inicio_mes)]
+    
     ingreso_mtd = mtd_data['Ingreso Real'].sum()
     ppto_mtd = mtd_data['Presupuesto'].sum()
+    ingreso_yoy_mtd = mtd_data['Ingreso Año Anterior'].sum() # Lo que se vendió el año pasado a esta fecha
+    
     cumplimiento_mtd = ingreso_mtd / ppto_mtd if ppto_mtd > 0 else 0
+    crecimiento_mtd = (ingreso_mtd / ingreso_yoy_mtd) - 1 if ingreso_yoy_mtd > 0 else 0
 
-    # --- LÓGICA PREDICTIVA (PROYECCIÓN A FIN DE MES) ---
+    # --- PROYECCIÓN ---
     dias_transcurridos = selected_date.day
     _, dias_del_mes = calendar.monthrange(selected_date.year, selected_date.month)
-    
     mes_completo = df[(df['Fecha'].dt.year == selected_date.year) & (df['Fecha'].dt.month == selected_date.month)]
     ppto_total_mes = mes_completo['Presupuesto'].sum()
 
@@ -36,7 +35,9 @@ def get_pulse_metrics(df, selected_date):
     return {
         'ingreso_mtd': ingreso_mtd, 
         'ppto_mtd': ppto_mtd,
+        'ingreso_yoy_mtd': ingreso_yoy_mtd,
         'cumplimiento_mtd': cumplimiento_mtd,
+        'crecimiento_mtd': crecimiento_mtd,
         'proyeccion_mes': proyeccion_mes, 
         'ppto_total_mes': ppto_total_mes,
         'cumplimiento_proyectado': cumplimiento_proyectado

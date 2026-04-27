@@ -6,67 +6,55 @@ from src.calculations import load_and_preprocess, get_pulse_metrics, prepare_adv
 
 st.set_page_config(page_title="Control Estratégico Integral", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS Avanzado UI/UX (Tarjetas Corporativas y Optimización Móvil)
+# CSS Avanzado UI/UX
 st.markdown("""
     <style>
     .stApp { background-color: #0b1120; }
     h1, h2, h3, p { text-align: center !important; color: #f8fafc !important; }
-    
-    /* Diseño de las Tarjetas (Cards) para las Métricas */
     div[data-testid="metric-container"] {
         background-color: #1e293b;
         border: 1px solid #334155;
         border-radius: 10px;
         padding: 15px 10px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
     }
-    
     div[data-testid="stMetricValue"] { text-align: center !important; font-size: 1.8rem !important; color: #ffffff !important; }
     div[data-testid="stMetricLabel"] { text-align: center !important; font-size: 1rem !important; color: #94a3b8 !important; }
-    div[data-testid="stMetricDelta"] { justify-content: center !important; font-size: 0.9rem !important;}
-    
-    /* Pestañas optimizadas para toque en móvil */
     button[data-baseweb="tab"] { font-size: 1.1rem !important; padding: 0.8rem 1.5rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DEL TACÓMETRO ---
-def create_gauge_chart(value, title):
-    pct_value = value * 100 
+# --- FUNCIÓN DEL TACÓMETRO MEJORADA (Sin solapamiento) ---
+def create_gauge_chart(value, title, is_percent_growth=False):
+    # Si es crecimiento, el valor base de referencia es 0% (no 100%)
+    display_value = value * 100
+    reference_val = 0 if is_percent_growth else 100
+    
     fig = go.Figure(go.Indicator(
         mode = "gauge+number+delta",
-        value = pct_value,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': title, 'font': {'size': 14, 'color': '#94a3b8'}},
-        delta = {'reference': 100, 'position': "top", 'suffix': "%"},
-        number = {'suffix': "%", 'font': {'size': 24, 'color': '#ffffff'}},
+        value = display_value,
+        domain = {'x': [0, 1], 'y': [0, 0.75]}, # Bajamos el gráfico para dejar espacio al título
+        delta = {'reference': reference_val, 'position': "top", 'suffix': "%", 'font': {'size': 16}},
+        number = {'suffix': "%", 'font': {'size': 22, 'color': '#ffffff'}},
         gauge = {
-            'axis': {'range': [0, max(120, pct_value + 10)], 'tickwidth': 1, 'tickcolor': "#334155"},
+            'axis': {'range': [-50 if is_percent_growth else 0, 150 if is_percent_growth else 130], 'tickcolor': "#334155"},
             'bar': {'color': "#3b82f6"},
             'bgcolor': "rgba(0,0,0,0)",
-            'borderwidth': 2,
-            'bordercolor': "#1e293b",
             'steps': [
-                {'range': [0, 80], 'color': "rgba(239, 68, 68, 0.3)"},   # Rojo
-                {'range': [80, 100], 'color': "rgba(245, 158, 11, 0.3)"}, # Amarillo
-                {'range': [100, max(120, pct_value + 10)], 'color': "rgba(16, 185, 129, 0.3)"} # Verde
+                {'range': [-50 if is_percent_growth else 0, 0 if is_percent_growth else 80], 'color': "rgba(239, 68, 68, 0.2)"},
+                {'range': [0 if is_percent_growth else 80, 10 if is_percent_growth else 100], 'color': "rgba(245, 158, 11, 0.2)"},
+                {'range': [10 if is_percent_growth else 100, 150 if is_percent_growth else 130], 'color': "rgba(16, 185, 129, 0.2)"}
             ],
-            'threshold': {
-                'line': {'color': "white", 'width': 3},
-                'thickness': 0.75,
-                'value': 100
-            }
+            'threshold': {'line': {'color': "white", 'width': 2}, 'value': reference_val}
         }
     ))
     
     fig.update_layout(
+        title = {'text': title, 'y': 0.9, 'x': 0.5, 'xanchor': 'center', 'yanchor': 'top', 'font': {'size': 14, 'color': '#94a3b8'}},
         paper_bgcolor="rgba(0,0,0,0)",
-        font={'color': "#f8fafc", 'family': "Arial"},
-        height=180, # Altura compacta para móviles
-        margin=dict(l=10, r=10, t=30, b=10)
+        height=200,
+        margin=dict(l=15, r=15, t=50, b=10)
     )
     return fig
-# -----------------------------
 
 @st.cache_data
 def get_data():
@@ -75,92 +63,64 @@ def get_data():
 df_base = get_data()
 
 st.title("Control Integral de Negocios (CIN)")
-st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top:-15px;'>Visibilidad Estratégica en Tiempo Real</p><br>", unsafe_allow_html=True)
+st.markdown("<p style='color: #64748b; font-size: 1.1rem; margin-top:-15px;'>Consultoría DaaS - Dashboard Estratégico</p><br>", unsafe_allow_html=True)
 
-# Eliminamos las columnas espaciadoras para maximizar el ancho en móviles
 col_sel1, col_sel2 = st.columns(2)
 with col_sel1:
     ultima_fecha = df_base['Fecha'].max()
-    fecha_analisis = pd.to_datetime(st.date_input("🗓️ Fecha de análisis:", ultima_fecha, min_value=df_base['Fecha'].min(), max_value=ultima_fecha))
+    fecha_analisis = pd.to_datetime(st.date_input("🗓️ Fecha de análisis:", ultima_fecha))
 with col_sel2:
-    perspectiva = st.selectbox("🏬 Perspectiva Comercial:", ["General del Negocio"] + sorted(list(df_base['Categoria'].unique())))
+    perspectiva = st.selectbox("🏬 Perspectiva:", ["General del Negocio"] + sorted(list(df_base['Categoria'].unique())))
 
 df_working = df_base if perspectiva == "General del Negocio" else df_base[df_base['Categoria'] == perspectiva]
-st.markdown("---")
-
 metrics = get_pulse_metrics(df_working, fecha_analisis)
 
 if metrics:
-    tab1, tab2, tab3 = st.tabs(["🎛️ Centro de Mando", "📈 Análisis Visual", "📋 Auditoría y Detalles"])
+    tab1, tab2, tab3 = st.tabs(["🎛️ Centro de Mando", "📈 Análisis Visual", "📋 Auditoría"])
 
     with tab1:
-        st.subheader("Rendimiento del Mes a la Fecha (MTD)")
-        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>¿Cómo vamos desde el día 1 hasta hoy?</p>", unsafe_allow_html=True)
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Acumulado a la Fecha", f"${metrics['ingreso_mtd']:,.0f}")
-        c2.metric("Presupuesto a la Fecha", f"${metrics['ppto_mtd']:,.0f}")
+        # BLOQUE 1: CUMPLIMIENTO
+        st.subheader("Cumplimiento del Presupuesto (MTD)")
+        c1, c2, c3 = st.columns([1, 1, 1.2])
+        c1.metric("Venta Acumulada", f"${metrics['ingreso_mtd']:,.0f}")
+        c2.metric("Ppto. a la Fecha", f"${metrics['ppto_mtd']:,.0f}")
         with c3:
-            st.plotly_chart(create_gauge_chart(metrics['cumplimiento_mtd'], "Cumplimiento MTD"), use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(create_gauge_chart(metrics['cumplimiento_mtd'], "Cumplimiento Meta"), use_container_width=True, config={'displayModeBar': False})
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("---")
         
-        st.subheader("Proyección a Cierre de Mes (Run-Rate)")
-        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Si mantenemos el ritmo, ¿alcanzaremos la meta del mes?</p>", unsafe_allow_html=True)
+        # BLOQUE 2: CRECIMIENTO YoY (Nueva sección solicitada)
+        st.subheader("Crecimiento vs Año Anterior (YoY)")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.85rem; margin-top:-15px;'>Comparativa acumulada contra los mismos días del año pasado</p>", unsafe_allow_html=True)
+        g1, g2, g3 = st.columns([1, 1, 1.2])
+        g1.metric("Venta Actual", f"${metrics['ingreso_mtd']:,.0f}")
+        g2.metric("Venta Año Pasado", f"${metrics['ingreso_yoy_mtd']:,.0f}")
+        with g3:
+            # Usamos lógica de crecimiento (referencia 0%)
+            st.plotly_chart(create_gauge_chart(metrics['crecimiento_mtd'], "Crecimiento Real", is_percent_growth=True), use_container_width=True, config={'displayModeBar': False})
+
+        st.markdown("---")
         
-        c4, c5, c6 = st.columns(3)
-        c4.metric("Proyección Final MTD", f"${metrics['proyeccion_mes']:,.0f}")
-        c5.metric("Presupuesto Total del Mes", f"${metrics['ppto_total_mes']:,.0f}")
-        with c6:
-            st.plotly_chart(create_gauge_chart(metrics['cumplimiento_proyectado'], "Proyección Final"), use_container_width=True, config={'displayModeBar': False})
+        # BLOQUE 3: PROYECCIÓN
+        st.subheader("Proyección a Cierre de Mes")
+        p1, p2, p3 = st.columns([1, 1, 1.2])
+        p1.metric("Proyección Final", f"${metrics['proyeccion_mes']:,.0f}")
+        p2.metric("Meta Total Mes", f"${metrics['ppto_total_mes']:,.0f}")
+        with p3:
+            st.plotly_chart(create_gauge_chart(metrics['cumplimiento_proyectado'], "Éxito Proyectado"), use_container_width=True, config={'displayModeBar': False})
 
     with tab2:
-        st.subheader(f"Tendencia de Facturación (Últimos 7 Días)")
+        st.subheader("Tendencia de Facturación (7 Días)")
         df_trend = prepare_chart_trend(df_working, fecha_analisis)
-        if not df_trend.empty:
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Ingreso Real'], name='Venta Real', marker_color='#3b82f6', text=df_trend['Ingreso Real'].map('${:,.0f}'.format), textposition='auto'))
-            fig.add_trace(go.Scatter(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Presupuesto'], mode='lines+markers', name='Presupuesto', line=dict(color='#10b981', width=3)))
-            fig.add_trace(go.Scatter(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Ingreso Año Anterior'], mode='lines+markers', name='Año Anterior', line=dict(color='#f59e0b', width=3, dash='dot')))
-            
-            fig.update_layout(template='plotly_dark', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-            st.plotly_chart(fig, use_container_width=True)
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Ingreso Real'], name='Real', marker_color='#3b82f6'))
+        fig.add_trace(go.Scatter(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Presupuesto'], name='Ppto', line=dict(color='#10b981', width=3)))
+        fig.add_trace(go.Scatter(x=df_trend['Fecha'].dt.strftime('%d/%m'), y=df_trend['Ingreso Año Anterior'], name='Año Pasado', line=dict(color='#f59e0b', dash='dot')))
+        fig.update_layout(template='plotly_dark', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1))
+        st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
-        st.subheader("Historial Estratégico")
+        st.subheader("Auditoría de Datos")
         df_table = prepare_advanced_table(df_working, fecha_analisis)
-        
-        def style_dataframe(df):
-            format_dict = {col: '${:,.2f}' if col[0] == 'Facturación' else '{:.0%}' for col in df.columns if col[0] in ['Facturación', 'Cumplimiento', 'Crecimiento']}
-            st_df = df.style.hide(axis='index').format(format_dict)
-            
-            def highlight_rows(x):
-                df_colors = pd.DataFrame('', index=x.index, columns=x.columns)
-                if len(df_colors) > 1: 
-                    df_colors.iloc[1, :] = 'background-color: #1e3a8a; color: white;'
-                    df_colors.iloc[-1, :] = 'background-color: #334155; color: white; font-weight: bold;'
-                return df_colors
-
-            st_df = st_df.apply(highlight_rows, axis=None)
-            st_df = st_df.set_table_styles([
-                {'selector': 'th', 'props': [('text-align', 'center !important'), ('border-bottom', '1px solid #334155')]},
-                {'selector': 'td', 'props': [('text-align', 'center !important'), ('border-bottom', '1px solid #1e293b')]}
-            ])
-            return st_df
-            
-        html_table = style_dataframe(df_table).to_html()
-        
-        custom_html = f"""
-        <div style="width:100%; overflow-x: auto;">
-            <style>
-                table.dataframe {{ width: 100%; border-collapse: collapse; color: #f8fafc; font-size: 13px; }}
-                table.dataframe th {{ background-color: #0f172a; padding: 10px; font-weight: 600; white-space: nowrap; }}
-                table.dataframe td {{ padding: 8px; white-space: nowrap; }}
-                table.dataframe tr:hover {{ background-color: #1e293b; }}
-            </style>
-            {html_table}
-        </div>
-        """
-        st.markdown(custom_html, unsafe_allow_html=True)
-else:
-    st.warning("No hay datos disponibles para esta fecha.")
+        html_table = df_table.to_html(index=False)
+        st.markdown(f'<div style="overflow-x:auto;">{html_table}</div>', unsafe_allow_html=True)
