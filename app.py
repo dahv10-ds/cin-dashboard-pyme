@@ -115,7 +115,9 @@ if metrics:
 
     with tab1:
         # BLOQUE 1: CUMPLIMIENTO
-        st.subheader("Cumplimiento del Presupuesto (MTD)")
+        st.subheader("📊 Desempeño Acumulado vs. Presupuesto")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>¿Cómo vamos desde el día 1 hasta hoy en comparación con la meta?</p>", unsafe_allow_html=True)
+        
         c1, c2, c3 = st.columns([1, 1, 1.2])
         c1.metric("Venta Acumulada", f"${metrics['ingreso_mtd']:,.0f}")
         c2.metric("Ppto. a la Fecha", f"${metrics['ppto_mtd']:,.0f}")
@@ -124,26 +126,29 @@ if metrics:
 
         st.markdown("---")
         
-        # BLOQUE 2: CRECIMIENTO YoY (Nueva sección solicitada)
-        st.subheader("Crecimiento vs Año Anterior (YoY)")
-        st.markdown("<p style='color: #94a3b8; font-size: 0.85rem; margin-top:-15px;'>Comparativa acumulada contra los mismos días del año pasado</p>", unsafe_allow_html=True)
+        # BLOQUE 2: CRECIMIENTO YoY
+        st.subheader("📈 Variación de Crecimiento (YoY)")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Comparativa de ventas contra los mismos días del año pasado.</p>", unsafe_allow_html=True)
+        
         g1, g2, g3 = st.columns([1, 1, 1.2])
         g1.metric("Venta Actual", f"${metrics['ingreso_mtd']:,.0f}")
         g2.metric("Venta Año Pasado", f"${metrics['ingreso_yoy_mtd']:,.0f}")
         with g3:
-            # Aquí sumamos 1 (que representa el 100% de la base) a tu lógica original
             st.plotly_chart(create_gauge_chart(metrics['crecimiento_mtd'] + 1, "Rendimiento YoY"), use_container_width=True, config={'displayModeBar': False})
 
         st.markdown("---")
         
         # BLOQUE 3: PROYECCIÓN
-        st.subheader("Proyección a Cierre de Mes")
+        st.subheader("🎯 Escenario Proyectado y Meta de Cierre")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Si mantenemos el ritmo actual, ¿alcanzaremos la meta del mes?</p>", unsafe_allow_html=True)
+        
         p1, p2, p3 = st.columns([1, 1, 1.2])
         p1.metric("Proyección Final", f"${metrics['proyeccion_mes']:,.0f}")
         p2.metric("Meta Total Mes", f"${metrics['ppto_total_mes']:,.0f}")
         with p3:
             st.plotly_chart(create_gauge_chart(metrics['cumplimiento_proyectado'], "Éxito Proyectado"), use_container_width=True, config={'displayModeBar': False})
 
+    # (El tab2 queda igual)
     with tab2:
         st.subheader("Tendencia de Facturación (7 Días)")
         df_trend = prepare_chart_trend(df_working, fecha_analisis)
@@ -155,7 +160,49 @@ if metrics:
         st.plotly_chart(fig, use_container_width=True)
 
     with tab3:
-        st.subheader("Auditoría de Datos")
+        st.subheader("📋 Auditoría de Datos")
+        st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Desglose detallado del histórico reciente.</p>", unsafe_allow_html=True)
+        
         df_table = prepare_advanced_table(df_working, fecha_analisis)
-        html_table = df_table.to_html(index=False)
-        st.markdown(f'<div style="overflow-x:auto;">{html_table}</div>', unsafe_allow_html=True)
+        
+        def style_dataframe(df):
+            format_dict = {}
+            for col in df.columns:
+                col_name = str(col).lower()
+                # 1. Si la columna es de tipo porcentaje, fijamos 2 decimales y símbolo %
+                if 'cumplimiento' in col_name or 'crecimiento' in col_name or '%' in col_name:
+                    format_dict[col] = '{:.2%}'
+                # 2. Si es cualquier otro número, fijamos formato moneda con 2 decimales
+                elif pd.api.types.is_numeric_dtype(df[col]):
+                    format_dict[col] = '${:,.2f}'
+                    
+            st_df = df.style.hide(axis='index').format(format_dict)
+            
+            def highlight_rows(x):
+                df_colors = pd.DataFrame('', index=x.index, columns=x.columns)
+                if len(df_colors) > 1: 
+                    df_colors.iloc[1, :] = 'background-color: #1e3a8a; color: white;'
+                    df_colors.iloc[-1, :] = 'background-color: #334155; color: white; font-weight: bold;'
+                return df_colors
+
+            st_df = st_df.apply(highlight_rows, axis=None)
+            st_df = st_df.set_table_styles([
+                {'selector': 'th', 'props': [('text-align', 'center !important'), ('border-bottom', '1px solid #334155')]},
+                {'selector': 'td', 'props': [('text-align', 'center !important'), ('border-bottom', '1px solid #1e293b')]}
+            ])
+            return st_df
+            
+        html_table = style_dataframe(df_table).to_html()
+        
+        custom_html = f"""
+        <div style="width:100%; overflow-x: auto;">
+            <style>
+                table.dataframe {{ width: 100%; border-collapse: collapse; color: #f8fafc; font-size: 13px; }}
+                table.dataframe th {{ background-color: #0f172a; padding: 10px; font-weight: 600; white-space: nowrap; }}
+                table.dataframe td {{ padding: 8px; white-space: nowrap; text-align: center; }}
+                table.dataframe tr:hover {{ background-color: #1e293b; }}
+            </style>
+            {html_table}
+        </div>
+        """
+        st.markdown(custom_html, unsafe_allow_html=True)
