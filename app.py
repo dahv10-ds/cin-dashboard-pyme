@@ -47,12 +47,30 @@ if not check_password():
 # CSS Avanzado UI/UX
 st.markdown("""
     <style>
-    .stApp { background-color: #0b1120; }
-    h1, h2, h3, p { text-align: center !important; color: #f8fafc !important; }
-    div[data-testid="metric-container"] { background-color: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 15px 10px; }
-    div[data-testid="stMetricValue"] { text-align: center !important; font-size: 1.8rem !important; color: #ffffff !important; }
-    div[data-testid="stMetricLabel"] { text-align: center !important; font-size: 1rem !important; color: #94a3b8 !important; }
-    button[data-baseweb="tab"] { font-size: 1.1rem !important; padding: 0.8rem 1.5rem !important; }
+    /* Estilo general emulando Apple Dark Mode */
+    .stApp { background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    h1, h2, h3, p { text-align: left !important; color: #F5F5F7 !important; font-weight: 500; }
+    
+    /* Tarjetas de métricas (Cards) tipo iOS */
+    div[data-testid="metric-container"] { 
+        background-color: #1c1c1e; 
+        border-radius: 16px; 
+        padding: 20px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        border: none;
+    }
+    div[data-testid="stMetricValue"] { text-align: left !important; font-size: 2rem !important; color: #FFFFFF !important; font-weight: 600; }
+    div[data-testid="stMetricLabel"] { text-align: left !important; font-size: 0.9rem !important; color: #86868b !important; text-transform: uppercase; letter-spacing: 0.5px;}
+    
+    /* Pestañas (Tabs) más limpias */
+    button[data-baseweb="tab"] { font-size: 1rem !important; font-weight: 500; color: #86868b; }
+    button[aria-selected="true"] { color: #FFFFFF !important; border-bottom: 2px solid #FFFFFF !important; }
+    
+    /* Tabla estilo Mac */
+    table.dataframe { width: 100%; border-collapse: separate; border-spacing: 0; color: #F5F5F7; font-size: 14px; border-radius: 12px; overflow: hidden; }
+    table.dataframe th { background-color: #1c1c1e; padding: 12px; font-weight: 500; border-bottom: 1px solid #38383a; }
+    table.dataframe td { padding: 10px; border-bottom: 1px solid #2c2c2e; text-align: center; }
+    table.dataframe tr:hover { background-color: #2c2c2e; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -148,6 +166,29 @@ if metrics:
 
     with tab3:
         st.subheader("📋 Auditoría de Datos")
+
+        # --- NUEVO: Gráfico Bullet (Barra de Progreso Apple Style) ---
+        fig_bullet = go.Figure(go.Indicator(
+            mode = "number+gauge",
+            value = metrics['ingreso_mtd'], # El acumulado real (barra que se llena)
+            number = {'prefix': "$", 'valueformat': ",.0f", 'font': {'size': 24, 'color': '#F5F5F7'}},
+            title = {'text': "Progreso del Mes<br><span style='font-size:0.8em;color:#86868b'>Ingreso vs Meta y Presupuesto</span>"},
+            gauge = {
+                'shape': "bullet",
+                'axis': {'range': [None, metrics['ppto_total_mes']], 'tickcolor': "#86868b", 'tickfont': {'color': '#86868b'}}, # La meta al final del mes
+                'threshold': {
+                    'line': {'color': "#FFD60A", 'width': 4}, # La línea amarilla del presupuesto acumulado
+                    'thickness': 0.8,
+                    'value': metrics['ppto_mtd']}, # Hasta dónde deberíamos ir hoy
+                'bgcolor': "#2c2c2e",
+                'bar': {'color': "#0A84FF"} # El azul vibrante de Apple
+            }
+        ))
+        fig_bullet.update_layout(height=150, margin=dict(t=20, b=20, l=150, r=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_bullet, use_container_width=True, config={'displayModeBar': False})
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
         st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Desglose detallado del histórico reciente.</p>", unsafe_allow_html=True)
         df_table = prepare_advanced_table(df_working, fecha_analisis)
         
