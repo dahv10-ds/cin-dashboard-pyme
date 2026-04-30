@@ -188,7 +188,6 @@ if metrics:
         st.plotly_chart(fig_bullet, use_container_width=True, config={'displayModeBar': False})
         
         st.markdown("<br>", unsafe_allow_html=True)
-        
         st.markdown("<p style='color: #94a3b8; font-size: 0.9rem; margin-top:-15px;'>Desglose detallado del histórico reciente.</p>", unsafe_allow_html=True)
         df_table = prepare_advanced_table(df_working, fecha_analisis)
         
